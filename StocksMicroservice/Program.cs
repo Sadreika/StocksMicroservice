@@ -1,4 +1,5 @@
 using Domain.DbContexts;
+using Microsoft.EntityFrameworkCore;
 
 namespace StocksMicroservice
 {
@@ -6,11 +7,16 @@ namespace StocksMicroservice
     {
         public static void Main(string[] args)
         {
+            IConfigurationRoot configuration = new ConfigurationBuilder()
+            .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+            .AddJsonFile("appsettings.json")
+            .Build();
+
             Host.CreateDefaultBuilder(args)
             .ConfigureServices((hostContext, services) => {
                 services.AddHostedService<Worker>();
-                //services.AddDbContext<StocksDbContext>(options =>
-                //    options.UseSqlServer(Configuration.GetConnectionString("StocksDb"), b => b.MigrationsAssembly("Migrations")));
+                services.AddDbContext<StocksDbContext>(options =>
+                    options.UseSqlServer(configuration.GetConnectionString("StocksDb")));
             }).Build().Run();
         }
     }

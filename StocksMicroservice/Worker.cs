@@ -12,6 +12,7 @@ namespace StocksMicroservice
         public Worker(ILogger<Worker> logger, StocksDbContext context)
         {
             _logger = logger;
+            _context = context;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
