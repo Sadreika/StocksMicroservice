@@ -1,6 +1,10 @@
 ﻿using Domain.DbContexts;
 using Domain.Entities;
 using Newtonsoft.Json.Linq;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+using System;
+using System.Text;
 
 namespace StocksMicroservice
 {
@@ -20,16 +24,55 @@ namespace StocksMicroservice
             while (!stoppingToken.IsCancellationRequested)
             {
                 _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
-
-                var stockShortName = "TSLA"; //<= replace
-                var stockData = await GetStock(stockShortName);
-                if (stockData != null)
+                var message = ReceiveMessage();
+                if (message != null)
                 {
-                    var status = await CreateStock(stockData); //<= replace
+                    var stockShortName = "TSLA"; //<= replace
+                    var stockData = await GetStock(stockShortName);
+                    if (stockData != null)
+                    {
+                        await CreateStock(stockData);
+                    }
                 }
 
                 await Task.Delay(5000, stoppingToken);
             }
+        }
+
+        private string? ReceiveMessage()
+        {
+            string? message = null;
+
+            try
+            {
+                var factory = new ConnectionFactory() { HostName = "localhost" };
+                using (var connection = factory.CreateConnection())
+                using (var channel = connection.CreateModel())
+                {
+                    channel.QueueDeclare(queue: "StockQueue",
+                                         durable: false,
+                                         exclusive: false,
+                                         autoDelete: false,
+                                         arguments: null);
+
+                    var consumer = new EventingBasicConsumer(channel);
+                    consumer.Received += (model, ea) =>
+                    {
+                        var body = ea.Body.ToArray();
+                        message = Encoding.UTF8.GetString(body);
+                    };
+
+                    channel.BasicConsume(queue: "hello",
+                                         autoAck: true,
+                                         consumer: consumer);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInformation($"Could not get a message because of exception: {ex.Message}", DateTimeOffset.Now);
+            }
+
+            return message;
         }
 
         private async Task<string?> GetStock(string stockShortName)
