@@ -62,7 +62,7 @@ namespace StocksMicroservice
                         message = Encoding.UTF8.GetString(body);
                     };
 
-                    channel.BasicConsume(queue: "hello",
+                    channel.BasicConsume(queue: "StockQueue",
                                          autoAck: true,
                                          consumer: consumer);
                 }
