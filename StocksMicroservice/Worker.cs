@@ -21,9 +21,10 @@ namespace StocksMicroservice
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            _logger.LogInformation($"Worker started {DateTime.Now}");
+
             while (!stoppingToken.IsCancellationRequested)
             {
-                _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
                 var message = ReceiveMessage();
                 if (message != null)
                 {
@@ -41,7 +42,7 @@ namespace StocksMicroservice
 
         private string? ReceiveMessage()
         {
-            string? message = null;
+            string? messagee = null;
 
             try
             {
@@ -59,7 +60,7 @@ namespace StocksMicroservice
                     consumer.Received += (model, ea) =>
                     {
                         var body = ea.Body.ToArray();
-                        message = Encoding.UTF8.GetString(body);
+                        var message = Encoding.UTF8.GetString(body);
                     };
 
                     channel.BasicConsume(queue: "StockQueue",
@@ -72,7 +73,7 @@ namespace StocksMicroservice
                 _logger.LogInformation($"Could not get a message because of exception: {ex.Message}", DateTimeOffset.Now);
             }
 
-            return message;
+            return messagee;
         }
 
         private async Task<string?> GetStock(string stockShortName)
