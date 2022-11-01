@@ -22,56 +22,53 @@ namespace StocksMicroservice
         {
             _logger.LogInformation("Worker started {0}", DateTime.Now);
 
-            while (!stoppingToken.IsCancellationRequested)
+            var factory = new ConnectionFactory() { HostName = "localhost" };
+            using (var connection = factory.CreateConnection())
+            using (var channel = connection.CreateModel())
             {
-                var message = ReceiveMessage();
-                if (message != null)
+                channel.QueueDeclare(queue: "StockQueue",
+                                   durable: false,
+                                   exclusive: false,
+                                   autoDelete: false,
+                                   arguments: null);
+
+                var consumer = new EventingBasicConsumer(channel);
+
+                consumer.Received += async (model, ea) =>
                 {
-                    var stockData = await GetStock(message);
-                    if (stockData != null)
+                    var body = ea.Body.ToArray();
+                    var message = Encoding.UTF8.GetString(body);
+
+                    _logger.LogInformation(" [x] Received {0}", message);
+
+                    if (message != null)
                     {
-                        await CreateStock(stockData);
+                        var stockData = await GetStock(message);
+                        if (stockData != null)
+                        {
+                            await CreateStock(stockData);
+                        }
+
+                        message = null;
                     }
-                }
+                };
 
-                await Task.Delay(5000, stoppingToken);
-            }
-        }
-
-        private string? ReceiveMessage()
-        {
-            string? message = null;
-
-            try
-            {
-                var factory = new ConnectionFactory() { HostName = "localhost" };
-                using (var connection = factory.CreateConnection())
-                using (var channel = connection.CreateModel())
+                while (!stoppingToken.IsCancellationRequested)
                 {
-                    channel.QueueDeclare(queue: "StockQueue",
-                                         durable: false,
-                                         exclusive: false,
-                                         autoDelete: false,
-                                         arguments: null);
-
-                    var consumer = new EventingBasicConsumer(channel);
-                    consumer.Received += (model, ea) =>
-                    {
-                        var body = ea.Body.ToArray();
-                        message = Encoding.UTF8.GetString(body);
-                        _logger.LogInformation(" [x] Received {0}", message);
-                    };
                     channel.BasicConsume(queue: "StockQueue",
-                                         autoAck: true,
-                                         consumer: consumer);
+                                   autoAck: true,
+                                   consumer: consumer);
+
+                    await Task.Delay(5000, stoppingToken);
+                }
+
+                if (stoppingToken.IsCancellationRequested)
+                {
+                    channel.BasicConsume(queue: "StockQueue",
+                                   autoAck: true,
+                                   consumer: consumer);
                 }
             }
-            catch (Exception ex)
-            {
-                _logger.LogInformation($"Could not get a message because of exception: {ex.Message}", DateTimeOffset.Now);
-            }
-
-            return message;
         }
 
         private async Task<string?> GetStock(string stockShortName)
