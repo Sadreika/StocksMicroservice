@@ -1,5 +1,6 @@
 ﻿using Domain.DbContexts;
 using Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using Repositories.Interfaces;
@@ -36,8 +37,15 @@ namespace Repositories
                 };
 
                 var stock = GetStock(newStock.Name);
-
-                _context.Stocks.Add(stock);
+                if (stock == null)
+                {
+                    _context.Stocks.Add(newStock);
+                }
+                else
+                {
+                    newStock.Id = stock.Id;
+                    stock = newStock;
+                }
 
                 return await _context.SaveChangesAsync() >= 0;
             }
@@ -49,7 +57,7 @@ namespace Repositories
             }
         }
 
-        public Stock GetStock(string stockName)
+        public Stock? GetStock(string stockName)
         {
             return _context.Stocks.FirstOrDefault(x => x.Name == stockName);
         }
