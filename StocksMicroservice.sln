@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StocksMicroservice", "Stock
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Domain", "Domain\Domain.csproj", "{2BDE636A-50B9-4CCD-B192-1C2919EEEF21}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Repositories", "Repositories\Repositories.csproj", "{67380445-7C96-42D1-BF5C-9B488911E28C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{2BDE636A-50B9-4CCD-B192-1C2919EEEF21}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2BDE636A-50B9-4CCD-B192-1C2919EEEF21}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2BDE636A-50B9-4CCD-B192-1C2919EEEF21}.Release|Any CPU.Build.0 = Release|Any CPU
+		{67380445-7C96-42D1-BF5C-9B488911E28C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{67380445-7C96-42D1-BF5C-9B488911E28C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{67380445-7C96-42D1-BF5C-9B488911E28C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{67380445-7C96-42D1-BF5C-9B488911E28C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

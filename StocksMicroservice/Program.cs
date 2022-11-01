@@ -1,5 +1,7 @@
 using Domain.DbContexts;
 using Microsoft.EntityFrameworkCore;
+using Repositories;
+using Repositories.Interfaces;
 
 namespace StocksMicroservice
 {
@@ -15,6 +17,7 @@ namespace StocksMicroservice
             Host.CreateDefaultBuilder(args)
             .ConfigureServices((hostContext, services) => {
                 services.AddHostedService<Worker>();
+                services.AddScoped<IStockRepo, StockRepo>();
                 services.AddDbContext<StocksDbContext>(options =>
                     options.UseSqlServer(configuration.GetConnectionString("StocksDb")));
             }).Build().Run();

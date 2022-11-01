@@ -1,8 +1,6 @@
-﻿using Domain.DbContexts;
-using Domain.Entities;
-using Newtonsoft.Json.Linq;
-using RabbitMQ.Client;
+﻿using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using Repositories.Interfaces;
 using System.Text;
 
 namespace StocksMicroservice
@@ -10,64 +8,71 @@ namespace StocksMicroservice
     public class Worker : BackgroundService
     {
         private readonly ILogger<Worker> _logger;
-        private readonly StocksDbContext _context;
+        private readonly IStockRepo _stockRepo;
 
-        public Worker(ILogger<Worker> logger, StocksDbContext context)
+        public Worker(ILogger<Worker> logger, IStockRepo stockRepo)
         {
             _logger = logger;
-            _context = context;
+            _stockRepo = stockRepo;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("Worker started {0}", DateTime.Now);
 
-            var factory = new ConnectionFactory() { HostName = "localhost" };
-            using (var connection = factory.CreateConnection())
-            using (var channel = connection.CreateModel())
+            try
             {
-                channel.QueueDeclare(queue: "StockQueue",
-                                   durable: false,
-                                   exclusive: false,
-                                   autoDelete: false,
-                                   arguments: null);
-
-                var consumer = new EventingBasicConsumer(channel);
-
-                consumer.Received += async (model, ea) =>
+                var factory = new ConnectionFactory() { HostName = "localhost" };
+                using (var connection = factory.CreateConnection())
+                using (var channel = connection.CreateModel())
                 {
-                    var body = ea.Body.ToArray();
-                    var message = Encoding.UTF8.GetString(body);
+                    channel.QueueDeclare(queue: "StockQueue",
+                                       durable: false,
+                                       exclusive: false,
+                                       autoDelete: false,
+                                       arguments: null);
 
-                    _logger.LogInformation(" [x] Received {0}", message);
+                    var consumer = new EventingBasicConsumer(channel);
 
-                    if (message != null)
+                    consumer.Received += async (model, ea) =>
                     {
-                        var stockData = await GetStock(message);
-                        if (stockData != null)
+                        var body = ea.Body.ToArray();
+                        var message = Encoding.UTF8.GetString(body);
+
+                        _logger.LogInformation("Received {0}", message);
+
+                        if (message != null)
                         {
-                            await CreateStock(stockData);
+                            var stockData = await GetStock(message);
+                            if (stockData != null)
+                            {
+                                await _stockRepo.CreateStock(stockData);
+                            }
+
+                            message = null;
                         }
+                    };
 
-                        message = null;
+                    while (!stoppingToken.IsCancellationRequested)
+                    {
+                        channel.BasicConsume(queue: "StockQueue",
+                                       autoAck: true,
+                                       consumer: consumer);
+
+                        await Task.Delay(5000, stoppingToken);
                     }
-                };
 
-                while (!stoppingToken.IsCancellationRequested)
-                {
-                    channel.BasicConsume(queue: "StockQueue",
-                                   autoAck: true,
-                                   consumer: consumer);
-
-                    await Task.Delay(5000, stoppingToken);
+                    if (stoppingToken.IsCancellationRequested)
+                    {
+                        channel.BasicConsume(queue: "StockQueue",
+                                       autoAck: true,
+                                       consumer: consumer);
+                    }
                 }
-
-                if (stoppingToken.IsCancellationRequested)
-                {
-                    channel.BasicConsume(queue: "StockQueue",
-                                   autoAck: true,
-                                   consumer: consumer);
-                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInformation("Worker failed because of exception: {0}", ex.Message);
             }
         }
 
@@ -91,34 +96,6 @@ namespace StocksMicroservice
             }
 
             return await response.Content.ReadAsStringAsync();
-        }
-
-        private async Task<bool> CreateStock(string stockData)
-        {
-            try
-            {
-                var jData = JObject.Parse(stockData);
-                var yieldParseResult = decimal.TryParse(jData["summaryDetail"]["yield"].ToString(), out decimal yield);
-                var regularMarketPriceParseResult = decimal.TryParse(jData["price"]["regularMarketPrice"]["fmt"].ToString(), out decimal regularMarketPrice);
-
-                _context.Stocks.Add(new Stock()
-                {
-                    Name = jData["price"]["longName"].ToString(),
-                    Price = regularMarketPriceParseResult ? regularMarketPrice : 0.0m,
-                    Currency = jData["price"]["currency"].ToString(),
-                    Symbol = jData["quoteType"]["symbol"].ToString(),
-                    Yield = yieldParseResult ? yield : 0.0m,
-                    MarketCap = jData["summaryDetail"]["marketCap"]["fmt"].ToString()
-                });
-
-                return await _context.SaveChangesAsync() >= 0;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogInformation($"Could not save stock to database because of exception: {ex.Message}", DateTimeOffset.Now);
-
-                return false;
-            }
         }
     }
 }
