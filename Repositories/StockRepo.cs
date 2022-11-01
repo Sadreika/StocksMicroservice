@@ -43,8 +43,11 @@ namespace Repositories
                 }
                 else
                 {
-                    newStock.Id = stock.Id;
-                    stock = newStock;
+                    stock.Price = newStock.Price;
+                    stock.Currency = newStock.Currency;
+                    stock.Symbol = newStock.Symbol;
+                    stock.Yield = newStock.Yield;
+                    stock.MarketCap = newStock.MarketCap;
                 }
 
                 return await _context.SaveChangesAsync() >= 0;
