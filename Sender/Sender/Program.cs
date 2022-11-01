@@ -15,7 +15,7 @@ class Program
                                  autoDelete: false,
                                  arguments: null);
 
-            string message = "Hello World!";
+            string message = "TSLA";
             var body = Encoding.UTF8.GetBytes(message);
 
             channel.BasicPublish(exchange: "",

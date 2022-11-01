@@ -3,7 +3,6 @@ using Domain.Entities;
 using Newtonsoft.Json.Linq;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using System;
 using System.Text;
 
 namespace StocksMicroservice
@@ -21,15 +20,14 @@ namespace StocksMicroservice
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation($"Worker started {DateTime.Now}");
+            _logger.LogInformation("Worker started {0}", DateTime.Now);
 
             while (!stoppingToken.IsCancellationRequested)
             {
                 var message = ReceiveMessage();
                 if (message != null)
                 {
-                    var stockShortName = "TSLA"; //<= replace
-                    var stockData = await GetStock(stockShortName);
+                    var stockData = await GetStock(message);
                     if (stockData != null)
                     {
                         await CreateStock(stockData);
@@ -42,7 +40,7 @@ namespace StocksMicroservice
 
         private string? ReceiveMessage()
         {
-            string? messagee = null;
+            string? message = null;
 
             try
             {
@@ -60,9 +58,9 @@ namespace StocksMicroservice
                     consumer.Received += (model, ea) =>
                     {
                         var body = ea.Body.ToArray();
-                        var message = Encoding.UTF8.GetString(body);
+                        message = Encoding.UTF8.GetString(body);
+                        _logger.LogInformation(" [x] Received {0}", message);
                     };
-
                     channel.BasicConsume(queue: "StockQueue",
                                          autoAck: true,
                                          consumer: consumer);
@@ -73,7 +71,7 @@ namespace StocksMicroservice
                 _logger.LogInformation($"Could not get a message because of exception: {ex.Message}", DateTimeOffset.Now);
             }
 
-            return messagee;
+            return message;
         }
 
         private async Task<string?> GetStock(string stockShortName)
